@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraSlide Narrator - Visual-to-Audio EdTech Narrator</title>
+    <meta name="description" content="AI-powered lecture slide visual-to-audio converter for visually impaired students. Detects diagrams, parses hierarchy trees and flowcharts, and narrates pedagogical content.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="theme-dark">
+
+    <!-- ARIA Live Region for Screen Readers -->
+    <div id="aria-status" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- Navigation Header -->
+    <header class="app-header" role="banner">
+        <div class="header-container">
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <h1>AuraSlide <span class="highlight">Narrator</span></h1>
+                    <span class="badge">EdTech Accessibility PS 03</span>
+                </div>
+            </div>
+
+            <!-- Accessibility Quick Controls -->
+            <div class="accessibility-bar" role="toolbar" aria-label="Accessibility Settings">
+                <button id="btn-contrast" class="btn-acc" aria-pressed="false" title="Toggle High Contrast Mode (Shortcut: H)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor"/></svg>
+                    <span>High Contrast</span>
+                </button>
+                <button id="btn-dyslexia" class="btn-acc" aria-pressed="false" title="Toggle Dyslexia-Friendly Font (Shortcut: D)">
+                    <span class="font-icon">Aa</span>
+                    <span>Dyslexia Font</span>
+                </button>
+                <button id="btn-logs-toggle" class="btn-acc" title="Toggle Execution Terminal Logs (Shortcut: L)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                    <span>Backend Logs</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Layout Container -->
+    <main class="main-container" role="main">
+
+        <!-- Top Action Bar & File Selector -->
+        <section class="top-controls card">
+            <div class="file-upload-zone">
+                <label for="file-input" class="upload-label" id="upload-label">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <span>Upload Slide Deck (<strong>PPTX</strong> or <strong>PDF</strong>)</span>
+                </label>
+                <input type="file" id="file-input" accept=".pptx,.pdf" hidden aria-labelledby="upload-label">
+            </div>
+
+            <div class="demo-decks-selector">
+                <span class="label-text">Or Load Sample Lecture Deck:</span>
+                <div class="demo-buttons">
+                    <button class="btn-demo active" data-deck="biology">
+                        <span class="dot green"></span> Biology Evolutionary Tree
+                    </button>
+                    <button class="btn-demo" data-deck="cs">
+                        <span class="dot blue"></span> CS Binary Search Flowchart
+                    </button>
+                    <button class="btn-demo" data-deck="business">
+                        <span class="dot purple"></span> Supply Chain Process
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dashboard Workspace Grid -->
+        <div class="workspace-grid">
+
+            <!-- Left Panel: Slide Viewer & Interactive Canvas -->
+            <section class="panel slide-panel card" aria-label="Slide Visual Viewer">
+                <div class="panel-header">
+                    <h2 id="slide-title-display">Slide 1: Loading...</h2>
+                    <div class="slide-nav-controls">
+                        <button id="btn-prev-slide" class="btn-nav" title="Previous Slide (Left Arrow)">‹ Prev</button>
+                        <span id="slide-counter" class="counter-text">Slide 1 / 1</span>
+                        <button id="btn-next-slide" class="btn-nav" title="Next Slide (Right Arrow)">Next ›</button>
+                    </div>
+                </div>
+
+                <!-- Canvas Wrapper with Bounding Box Overlay -->
+                <div class="canvas-wrapper" id="canvas-container">
+                    <img id="slide-canvas-img" src="" alt="Lecture slide preview image" class="slide-img">
+                    <div id="bbox-overlay" class="bbox-overlay-layer"></div>
+                    <div id="loading-spinner" class="spinner-overlay hidden">
+                        <div class="spinner"></div>
+                        <p id="loading-text">Analyzing Slide Graphics & Diagrams...</p>
+                    </div>
+                </div>
+
+                <!-- Detected Diagram Metadata Pill -->
+                <div class="diagram-meta-bar" id="diagram-meta-bar">
+                    <div class="meta-item">
+                        <span class="meta-label">Detected Visual Graphic:</span>
+                        <span id="meta-type" class="meta-tag blue-tag">Analyzing...</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Detection Confidence:</span>
+                        <span id="meta-confidence" class="meta-value">--</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Graphic Elements:</span>
+                        <span id="meta-elements" class="meta-value">--</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel: Audio Narrator & Synchronized Transcript -->
+            <section class="panel narration-panel card" aria-label="Accessible Audio Narration">
+                <div class="panel-header">
+                    <h2>Continuous Audio Narration</h2>
+                    <span id="engine-badge" class="engine-badge">Pedagogical Visual Engine</span>
+                </div>
+
+                <!-- Custom Accessible Audio Player Bar -->
+                <div class="audio-player-card">
+                    <div class="player-controls">
+                        <button id="btn-play-pause" class="btn-play" aria-label="Play Narration Audio (Spacebar)">
+                            <svg id="icon-play" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            <svg id="icon-pause" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" class="hidden"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                        </button>
+
+                        <div class="progress-container">
+                            <input type="range" id="audio-seekbar" value="0" max="100" class="seekbar" aria-label="Audio Seekbar">
+                            <div class="time-display">
+                                <span id="time-current">0:00</span> / <span id="time-total">0:00</span>
+                            </div>
+                        </div>
+
+                        <div class="speed-selector">
+                            <label for="select-speed" class="sr-only">Playback Speed</label>
+                            <select id="select-speed" class="speed-dropdown" title="Adjust Speech Playback Speed">
+                                <option value="0.75">0.75x</option>
+                                <option value="1.0" selected>1.0x (Normal)</option>
+                                <option value="1.25">1.25x</option>
+                                <option value="1.5">1.5x (Fast)</option>
+                                <option value="2.0">2.0x (Rapid)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <audio id="audio-element" class="hidden"></audio>
+                </div>
+
+                <!-- Synchronized Audio Transcript Box -->
+                <div class="transcript-container">
+                    <div class="transcript-header">
+                        <h3>Pedagogical Audio Script</h3>
+                        <span class="transcript-hint">Sentences automatically highlight as speech plays</span>
+                    </div>
+                    <div id="transcript-body" class="transcript-body" tabindex="0" role="region" aria-label="Continuous Audio Transcript">
+                        <p class="placeholder-text">Click Play or select a slide to hear the narrated explanation.</p>
+                    </div>
+                </div>
+
+                <!-- Export & Accessibility Actions -->
+                <div class="export-actions">
+                    <button id="btn-download-mp3" class="btn-secondary" title="Download Narration Audio MP3 File">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <span>Download MP3</span>
+                    </button>
+                    <button id="btn-download-txt" class="btn-secondary" title="Download Full Accessible Transcript">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                        <span>Export Transcript</span>
+                    </button>
+                </div>
+
+            </section>
+        </div>
+
+        <!-- Terminal Execution Trace Log Panel (Submission / Video Requirement) -->
+        <section id="terminal-logs-panel" class="panel logs-panel card" aria-label="Backend Execution Logs Console">
+            <div class="panel-header">
+                <div class="terminal-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                    <h3>Backend Terminal Execution Traces & Debugger Console</h3>
+                </div>
+                <button id="btn-clear-logs" class="btn-text">Clear Console</button>
+            </div>
+            <div id="logs-console" class="logs-console" tabindex="0" aria-label="Terminal Trace Output">
+                <div class="log-line info">[16:40:00] [SYSTEM] Backend log stream connected. Ready for slide analysis.</div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="app-footer">
+        <p>AuraSlide Narrator • Developed for PS 03 Lecture Slides Accessibility • Built with Vision AI, Spatial Topology & Neural Speech Synthesis</p>
+    </footer>
+
+    <script src="demo_data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
